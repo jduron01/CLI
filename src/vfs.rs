@@ -45,24 +45,9 @@ impl Navigator {
         return &self.path;
     }
 
-    pub fn current_dir(&self) -> &Directory {
-        let mut current = &self.root;
-
-        for &idx in &self.path_stack {
-            current = &current.subdirs[idx];
-        }
-
-        return current;
-    }
-
-    pub fn current_dir_mut(&mut self) -> &mut Directory {
-        let mut current = &mut self.root;
-
-        for &idx in &self.path_stack {
-            current = &mut current.subdirs[idx];
-        }
-
-        return current;
+    pub fn make_directory(&mut self, name: String) {
+        let new_dir = Directory::new(name);
+        self.current_dir_mut().subdirs.push(new_dir);
     }
 
     pub fn change_directory(&mut self, dir_name: &str) -> bool {
@@ -94,22 +79,6 @@ impl Navigator {
         }
     }
 
-    pub fn update_current_path(&mut self) {
-        self.path = '/'.into();
-        let mut current = &self.root;
-
-        for &idx in &self.path_stack {
-            current = &current.subdirs[idx];
-            self.path.push_str(&current.name);
-            self.path.push('/');
-        }
-    }
-
-    pub fn make_directory(&mut self, name: String) {
-        let new_dir = Directory::new(name);
-        self.current_dir_mut().subdirs.push(new_dir);
-    }
-
     pub fn list_contents(&self) {
         let current = self.current_dir();
 
@@ -123,6 +92,37 @@ impl Navigator {
 
         for dir in &current.subdirs {
             println!("{} (dir)", dir.name);
+        }
+    }
+
+    fn current_dir(&self) -> &Directory {
+        let mut current = &self.root;
+
+        for &idx in &self.path_stack {
+            current = &current.subdirs[idx];
+        }
+
+        return current;
+    }
+
+    fn current_dir_mut(&mut self) -> &mut Directory {
+        let mut current = &mut self.root;
+
+        for &idx in &self.path_stack {
+            current = &mut current.subdirs[idx];
+        }
+
+        return current;
+    }
+
+    fn update_current_path(&mut self) {
+        self.path = '/'.into();
+        let mut current = &self.root;
+
+        for &idx in &self.path_stack {
+            current = &current.subdirs[idx];
+            self.path.push_str(&current.name);
+            self.path.push('/');
         }
     }
 }
