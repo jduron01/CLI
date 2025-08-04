@@ -1,32 +1,48 @@
-use serde::{Serialize, Deserialize};
-
-#[derive(Serialize, Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct File {
-    pub name: String,
-    pub content: String,
-    pub size: usize
+    name: String,
+    content: String,
+    size: usize,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Directory {
-    pub name: String,
-    pub files: Vec<File>,
-    pub subdirs: Vec<Directory>
+    name: String,
+    files: Vec<File>,
+    subdirs: Vec<Directory>,
 }
 
 pub struct Navigator {
-    pub root: Directory,
-    pub path_stack: Vec<usize>,
-    pub current_path: String
+    root: Directory,
+    path_stack: Vec<usize>,
+    path: String,
+}
+
+impl Directory {
+    pub fn new(name: String) -> Self {
+        return Directory {
+            name,
+            files: Vec::new(),
+            subdirs: Vec::new(),
+        };
+    }
 }
 
 impl Navigator {
     pub fn new(root: Directory) -> Self {
-        Navigator {
+        return Navigator {
             root,
             path_stack: Vec::new(),
-            current_path: "/".to_string(),
-        }
+            path: '/'.into(),
+        };
+    }
+
+    pub fn root(self) -> Directory {
+        return self.root;
+    }
+
+    pub fn path(&self) -> &String {
+        return &self.path;
     }
 
     pub fn current_dir(&self) -> &Directory {
@@ -52,46 +68,45 @@ impl Navigator {
     pub fn change_directory(&mut self, dir_name: &str) -> bool {
         match dir_name {
             ".." => {
-                        if !self.path_stack.is_empty() {
-                            self.path_stack.pop();
-                            self.update_current_path();
-                            return true;
-                        } else {
-                            return false;
-                        }
-                    }
+                if !self.path_stack.is_empty() {
+                    self.path_stack.pop();
+                    self.update_current_path();
+                    return true;
+                } else {
+                    return false;
+                }
+            }
             name => {
-                        let current = self.current_dir();
-                        
-                        if let Some(index) = current.subdirs.iter().position(|d| d.name == name) {
-                            self.path_stack.push(index);
-                            self.update_current_path();
-                            return true;
-                        } else {
-                            return false;
-                        }
-                    }
+                let current = self.current_dir();
+
+                if let Some(index) = current
+                    .subdirs
+                    .iter()
+                    .position(|directory| directory.name == name)
+                {
+                    self.path_stack.push(index);
+                    self.update_current_path();
+                    return true;
+                } else {
+                    return false;
+                }
+            }
         }
     }
 
     pub fn update_current_path(&mut self) {
-        self.current_path = "/".to_string();
+        self.path = '/'.into();
         let mut current = &self.root;
 
         for &idx in &self.path_stack {
             current = &current.subdirs[idx];
-            self.current_path.push_str(&current.name);
-            self.current_path.push('/');
+            self.path.push_str(&current.name);
+            self.path.push('/');
         }
     }
 
     pub fn make_directory(&mut self, name: String) {
-        let new_dir = Directory {
-            name,
-            files: vec![],
-            subdirs: vec![],
-        };
-
+        let new_dir = Directory::new(name);
         self.current_dir_mut().subdirs.push(new_dir);
     }
 
@@ -107,7 +122,7 @@ impl Navigator {
         }
 
         for dir in &current.subdirs {
-            println!("{}/", dir.name);
+            println!("{} (dir)", dir.name);
         }
     }
 }

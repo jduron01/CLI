@@ -1,45 +1,40 @@
 mod vfs;
 
-use vfs::{File, Directory, Navigator};
-use std::io::{self, Write};
-use std::fs;
-use std::path::Path;
-use serde_json;
-use clearscreen::{self, ClearScreen};
-
 fn main() -> std::io::Result<()> {
-    print!("Enter file name to load VFS (or \"exit\" to quit): ");
-    io::stdout().flush()?;
+    print!("Enter file name to create or load VFS (or \"exit\" to quit): ");
+    std::io::Write::flush(&mut std::io::stdout())?;
 
     let mut file_name = String::new();
-    io::stdin().read_line(&mut file_name)?;
-    file_name = file_name.trim().to_string();
+    std::io::stdin().read_line(&mut file_name)?;
+    let file_name = file_name.trim();
 
     if file_name != "exit" {
         let root = load_vfs(&file_name)?;
-        let mut navigator = Navigator::new(root);
-        
+        let mut navigator = vfs::Navigator::new(root);
+
         loop {
-            print!("rustsh:{}> ", navigator.current_path);
-            io::stdout().flush()?;
+            print!("rustsh:{}> ", navigator.path());
+            std::io::Write::flush(&mut std::io::stdout())?;
 
             let mut command = String::new();
-            io::stdin().read_line(&mut command)?;
+            std::io::stdin().read_line(&mut command)?;
             let command = command.trim();
 
-            match command.split_whitespace().collect::<Vec<_>>().as_slice() {
-                ["mkdir", name] => navigator.make_directory(name.to_string()),
+            match command.split_whitespace().collect::<Vec<&str>>()[..] {
+                ["mkdir", name] => navigator.make_directory(name.into()),
                 ["cd", path] => {
-                                    if !navigator.change_directory(path) {
-                                        println!("Directory not found: {}", path);
-                                    }
-                                },
+                    if !navigator.change_directory(path) {
+                        println!("Directory not found: {}", path);
+                    }
+                }
                 ["ls"] => navigator.list_contents(),
-                ["clear"] => ClearScreen::default().clear().expect("Failed to clear screen."),
+                ["clear"] => clearscreen::ClearScreen::default()
+                    .clear()
+                    .expect("Failed to clear screen."),
                 ["exit"] => {
-                                save_vfs(&navigator.root, &file_name)?;
-                                break;
-                            },
+                    save_vfs(navigator.root(), &file_name)?;
+                    break;
+                }
                 _ => println!("Unknown command: {}", command),
             }
         }
@@ -48,28 +43,23 @@ fn main() -> std::io::Result<()> {
     Ok(())
 }
 
-fn save_vfs(vfs: &Directory, file_path: &str) -> std::io::Result<()> {
-    let serialized = serde_json::to_string_pretty(vfs)?;
-    fs::write(file_path, serialized)?;
-
-    Ok(())
-}
-
-fn load_vfs(file_path: &str) -> std::io::Result<Directory> {
-    let vfs_path = Path::new(file_path);
+fn load_vfs(file_path: &str) -> std::io::Result<vfs::Directory> {
+    let vfs_path = std::path::Path::new(file_path);
 
     if !vfs_path.exists() {
-        let root = Directory {
-            name: String::from("/"),
-            files: vec![],
-            subdirs: vec![]
-        };
-
-        save_vfs(&root, file_path)?;
+        let root = vfs::Directory::new('/'.into());
+        save_vfs(root, file_path)?;
     }
 
-    let data = fs::read_to_string(file_path)?;
+    let data = std::fs::read_to_string(file_path)?;
     let vfs = serde_json::from_str(&data)?;
 
     Ok(vfs)
+}
+
+fn save_vfs(vfs: vfs::Directory, file_path: &str) -> std::io::Result<()> {
+    let serialized = serde_json::to_string_pretty(&vfs)?;
+    std::fs::write(file_path, serialized)?;
+    
+    Ok(())
 }
